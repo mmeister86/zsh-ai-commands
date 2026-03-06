@@ -50,14 +50,13 @@ _zsh_ai_provider_get_api_key() {
 }
 
 # Make API request to Gemini generateContent endpoint
-# Arguments: $1 = request body (JSON string from core), $2 = model name, $3 = n_generations, $4 = explainer
+# Arguments: $1 = request body (JSON string from core)
 # Returns: Raw response via REPLY variable
 # Returns: 0 on success, 1 on failure
 _zsh_ai_provider_make_request() {
     local request_body="$1"
-    local model="$2"
-    local n="$3"
-    local explainer="$4"
+    local model="${ZSH_AI_COMMANDS_LLM_NAME:-$PROVIDER_DEFAULT_MODEL}"
+    local n="${ZSH_AI_COMMANDS_N_GENERATIONS:-1}"
     local max_retries=2
     local timeout="${ZSH_AI_COMMANDS_TIMEOUT:-30}"
     local attempt=0
@@ -109,8 +108,9 @@ _zsh_ai_provider_make_request() {
             "${PROVIDER_API_BASE}/models/${model}:generateContent?key=${api_key}" 2>&1)
         local curl_exit=$?
 
-        http_code=$(echo "$response" | tail -n1)
-        response=$(echo "$response" | sed '$d')
+        _zsh_ai_provider_split_http_response "$response"
+        http_code="$_ZSH_AI_PROVIDER_HTTP_CODE"
+        response="$REPLY"
 
         if (( curl_exit == 0 )); then
             if [[ "$http_code" == "200" ]]; then
@@ -136,7 +136,13 @@ _zsh_ai_provider_make_request() {
                 (( attempt++ ))
                 continue
             else
-                echo "zsh-ai-commands::Error::API request failed with HTTP $http_code"
+                _zsh_ai_provider_error_message "$response"
+                local provider_error="$REPLY"
+                if [[ -n "$provider_error" ]]; then
+                    echo "zsh-ai-commands::Error::API request failed with HTTP $http_code: $provider_error"
+                else
+                    echo "zsh-ai-commands::Error::API request failed with HTTP $http_code"
+                fi
                 return 1
             fi
         elif (( curl_exit == 28 )); then
@@ -178,8 +184,8 @@ _zsh_ai_provider_parse_response() {
     local response="$1"
     local parsed=""
 
-    # Extract content from Gemini response format: .candidates[0].content.parts[0].text
-    parsed=$(echo "$response" | jq -r '.candidates[].content.parts[].text' 2>/dev/null)
+    _zsh_ai_provider_parse_gemini_text "$response"
+    parsed="$REPLY"
 
     if [[ -z "$parsed" || "$parsed" == "null" ]]; then
         # Check for API error message
@@ -195,9 +201,6 @@ _zsh_ai_provider_parse_response() {
             echo "zsh-ai-commands::Error::Content blocked: $block_reason"
             return 1
         fi
-
-        # Try alternative parsing for escaped content
-        parsed=$(echo "$response" | sed '/"text": "/ s/\\/\\\\/g' | jq -r '.candidates[].content.parts[].text' 2>/dev/null)
 
         if [[ -z "$parsed" || "$parsed" == "null" ]]; then
             echo "zsh-ai-commands::Error::Failed to parse API response"

@@ -152,6 +152,11 @@ _zsh_ai_commands_init() {
         return 1
     }
 
+    source "${_ZSH_AI_COMMANDS_DIR}/providers/_common.zsh" || {
+        echo "zsh-ai-commands::Error::Could not load provider common helpers"
+        return 1
+    }
+
     # Load provider from config
     local provider_name=""
     if [[ -f "$ZSH_AI_COMMANDS_CONFIG_FILE" ]]; then
@@ -169,14 +174,16 @@ _zsh_ai_commands_init() {
         return 1
     }
 
-    # Get API key via provider function
-    _zsh_ai_provider_get_api_key || {
-        echo "zsh-ai-commands::Error::No API key found for ${PROVIDER_DISPLAY_NAME:-$provider_name} provider."
-        echo "Please either:"
-        echo "  1. Create ${ZSH_AI_COMMANDS_API_KEY_DIR}/${PROVIDER_KEY_FILE:-${provider_name}_key} with your API key"
-        echo "  2. Set ${PROVIDER_KEY_ENV_VAR:-ZSH_AI_COMMANDS_${(U)provider_name}_API_KEY} environment variable"
-        return 1
-    }
+    # Get API key via provider function only if provider requires one
+    if [[ "${PROVIDER_REQUIRES_API_KEY:-true}" == "true" ]]; then
+        _zsh_ai_provider_get_api_key || {
+            echo "zsh-ai-commands::Error::No API key found for ${PROVIDER_DISPLAY_NAME:-$provider_name} provider."
+            echo "Please either:"
+            echo "  1. Create ${ZSH_AI_COMMANDS_API_KEY_DIR}/${PROVIDER_KEY_FILE:-${provider_name}_key} with your API key"
+            echo "  2. Set ${PROVIDER_KEY_ENV_VAR:-ZSH_AI_COMMANDS_${(U)provider_name}_API_KEY} environment variable"
+            return 1
+        }
+    fi
 
     # Get model from config or provider default
     _zsh_ai_commands_get_llm_model

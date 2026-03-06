@@ -17,7 +17,8 @@ typeset -ga PROVIDER_MODELS=(
     "claude-opus-4-6-20250219"
     "claude-sonnet-4-6-20250219"
     "claude-sonnet-4-5-20250929"
-    "claude-haiku-4-5-20251015"
+    "claude-haiku-4-5-20251001"
+    "claude-haiku-4-5"
 )
 typeset -g PROVIDER_DEFAULT_MODEL="claude-sonnet-4-6-20250219"
 typeset -g PROVIDER_REQUIRES_API_KEY=true
@@ -107,8 +108,9 @@ _zsh_ai_provider_make_request() {
             "${PROVIDER_API_BASE}/messages" 2>&1)
         local curl_exit=$?
 
-        http_code=$(echo "$response" | tail -n1)
-        response=$(echo "$response" | sed '$d')
+        _zsh_ai_provider_split_http_response "$response"
+        http_code="$_ZSH_AI_PROVIDER_HTTP_CODE"
+        response="$REPLY"
 
         if (( curl_exit == 0 )); then
             if [[ "$http_code" == "200" ]]; then
@@ -130,7 +132,13 @@ _zsh_ai_provider_make_request() {
                 (( attempt++ ))
                 continue
             else
-                echo "zsh-ai-commands::Error::Anthropic API request failed with HTTP $http_code"
+                _zsh_ai_provider_error_message "$response"
+                local provider_error="$REPLY"
+                if [[ -n "$provider_error" ]]; then
+                    echo "zsh-ai-commands::Error::Anthropic API request failed with HTTP $http_code: $provider_error"
+                else
+                    echo "zsh-ai-commands::Error::Anthropic API request failed with HTTP $http_code"
+                fi
                 return 1
             fi
         elif (( curl_exit == 28 )); then
@@ -172,9 +180,8 @@ _zsh_ai_provider_parse_response() {
     local response="$1"
     local parsed=""
 
-    # Extract content from Anthropic response format
-    # Anthropic returns: { "content": [{ "type": "text", "text": "..." }] }
-    parsed=$(echo "$response" | jq -r '.content[0].text' 2>/dev/null)
+    _zsh_ai_provider_parse_anthropic_text "$response"
+    parsed="$REPLY"
 
     if [[ -z "$parsed" || "$parsed" == "null" ]]; then
         # Check for API error message

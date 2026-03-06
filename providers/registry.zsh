@@ -43,6 +43,12 @@ _zsh_ai_registry_load_provider() {
         return 1
     fi
 
+    # Clear optional provider hooks so old provider functions do not leak
+    unfunction _zsh_ai_provider_get_models 2>/dev/null
+    unfunction _zsh_ai_provider_validate_model_impl 2>/dev/null
+    unfunction _zsh_ai_provider_transform_request 2>/dev/null
+
+    # Source the provider file
     source "$provider_file"
 
     if [[ -z "$PROVIDER_NAME" ]]; then
@@ -60,7 +66,7 @@ _zsh_ai_registry_list_providers() {
     local f name names=()
     for f in "${_zsh_ai_registry_dir}"/*.zsh(N); do
         name="${f:t:r}"
-        [[ "$name" == "_provider_interface" || "$name" == "registry" ]] && continue
+        [[ "$name" == "_provider_interface" || "$name" == "registry" || "$name" == "_common" ]] && continue
         names+=("$name")
     done
     REPLY="${names[*]}"
@@ -170,9 +176,9 @@ _zsh_ai_provider_validate_model() {
         model="$REPLY"
     fi
 
-    # Check if provider has a custom validate_model function
-    if (( ${+functions[_zsh_ai_provider_validate_model]} )); then
-        _zsh_ai_provider_validate_model "$model"
+    # Check if provider has a custom validate_model hook
+    if (( ${+functions[_zsh_ai_provider_validate_model_impl]} )); then
+        _zsh_ai_provider_validate_model_impl "$model"
         return $?
     fi
 

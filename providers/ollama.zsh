@@ -164,7 +164,7 @@ _zsh_ai_provider_get_models() {
 # Validate that a model is available
 # Arguments: $1 = model name
 # Returns: 0 if valid, 1 if invalid
-_zsh_ai_provider_validate_model() {
+_zsh_ai_provider_validate_model_impl() {
     local model="$1"
 
     # Get available models
