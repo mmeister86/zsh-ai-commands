@@ -109,8 +109,9 @@ _zsh_ai_provider_make_request() {
         fi
         local curl_exit=$?
 
-        http_code=$(echo "$response" | tail -n1)
-        response=$(echo "$response" | sed '$d')
+        _zsh_ai_provider_split_http_response "$response"
+        http_code="$_ZSH_AI_PROVIDER_HTTP_CODE"
+        response="$REPLY"
 
         if (( curl_exit == 0 )); then
             if [[ "$http_code" == "200" ]]; then
@@ -135,7 +136,13 @@ _zsh_ai_provider_make_request() {
                 (( attempt++ ))
                 continue
             else
-                echo "zsh-ai-commands::Error::API request failed with HTTP $http_code"
+                _zsh_ai_provider_error_message "$response"
+                local provider_error="$REPLY"
+                if [[ -n "$provider_error" ]]; then
+                    echo "zsh-ai-commands::Error::API request failed with HTTP $http_code: $provider_error"
+                else
+                    echo "zsh-ai-commands::Error::API request failed with HTTP $http_code"
+                fi
                 return 1
             fi
         elif (( curl_exit == 28 )); then
@@ -178,8 +185,8 @@ _zsh_ai_provider_parse_response() {
     local response="$1"
     local parsed=""
 
-    # Extract content from choices array
-    parsed=$(echo "$response" | jq -r '.choices[].message.content' 2>/dev/null)
+    _zsh_ai_provider_parse_openai_text "$response"
+    parsed="$REPLY"
 
     if [[ -z "$parsed" || "$parsed" == "null" ]]; then
         # Check for API error message
@@ -188,9 +195,6 @@ _zsh_ai_provider_parse_response() {
             echo "zsh-ai-commands::Error::API error: $error_msg"
             return 1
         fi
-
-        # Try alternative parsing for escaped content
-        parsed=$(echo "$response" | sed '/"content": "/ s/\\/\\\\/g' | jq -r '.choices[].message.content' 2>/dev/null)
 
         if [[ -z "$parsed" || "$parsed" == "null" ]]; then
             echo "zsh-ai-commands::Error::Failed to parse API response"
@@ -238,7 +242,7 @@ _zsh_ai_provider_get_models() {
 # Validate model against dynamically discovered list
 # Arguments: $1 = model name
 # Returns: 0 if valid, 1 if invalid
-_zsh_ai_provider_validate_model() {
+_zsh_ai_provider_validate_model_impl() {
     local model="$1"
 
     # Get available models

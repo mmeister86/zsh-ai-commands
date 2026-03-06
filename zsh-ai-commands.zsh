@@ -1,5 +1,6 @@
 #!/bin/zsh
 
+typeset -g _ZSH_AI_COMMANDS_DIR="${${(%):-%x}:A:h}"
 typeset -g ZSH_AI_COMMANDS_CONFIG_DIR="${HOME}/.config/zsh-ai-commands"
 typeset -g ZSH_AI_COMMANDS_API_KEY_DIR="${ZSH_AI_COMMANDS_CONFIG_DIR}/keys"
 typeset -g ZSH_AI_COMMANDS_CONFIG_FILE="${ZSH_AI_COMMANDS_CONFIG_DIR}/config"
@@ -143,9 +144,14 @@ _zsh_ai_commands_init() {
     _zsh_ai_commands_ensure_config_dir || return 1
 
     # Source provider registry
-    local script_dir="${0:A:h}"
+    local script_dir="$_ZSH_AI_COMMANDS_DIR"
     source "${script_dir}/providers/registry.zsh" || {
         echo "zsh-ai-commands::Error::Could not load provider registry"
+        return 1
+    }
+
+    source "${script_dir}/providers/_common.zsh" || {
+        echo "zsh-ai-commands::Error::Could not load provider common helpers"
         return 1
     }
 
@@ -166,14 +172,16 @@ _zsh_ai_commands_init() {
         return 1
     }
 
-    # Get API key via provider function
-    _zsh_ai_provider_get_api_key || {
-        echo "zsh-ai-commands::Error::No API key found for ${PROVIDER_DISPLAY_NAME:-$provider_name} provider."
-        echo "Please either:"
-        echo "  1. Create ${ZSH_AI_COMMANDS_API_KEY_DIR}/${PROVIDER_KEY_FILE:-${provider_name}_key} with your API key"
-        echo "  2. Set ${PROVIDER_KEY_ENV_VAR:-ZSH_AI_COMMANDS_${(U)provider_name}_API_KEY} environment variable"
-        return 1
-    }
+    # Get API key via provider function only if provider requires one
+    if [[ "${PROVIDER_REQUIRES_API_KEY:-true}" == "true" ]]; then
+        _zsh_ai_provider_get_api_key || {
+            echo "zsh-ai-commands::Error::No API key found for ${PROVIDER_DISPLAY_NAME:-$provider_name} provider."
+            echo "Please either:"
+            echo "  1. Create ${ZSH_AI_COMMANDS_API_KEY_DIR}/${PROVIDER_KEY_FILE:-${provider_name}_key} with your API key"
+            echo "  2. Set ${PROVIDER_KEY_ENV_VAR:-ZSH_AI_COMMANDS_${(U)provider_name}_API_KEY} environment variable"
+            return 1
+        }
+    fi
 
     # Get model from config or provider default
     _zsh_ai_commands_get_llm_model
