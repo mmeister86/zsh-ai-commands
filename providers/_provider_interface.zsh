@@ -3,8 +3,8 @@
 # LLM Provider Interface Documentation
 # ==============================================================================
 # This file documents the interface that all LLM providers must implement.
-# Each provider is a self-contained .zsh file that implements the functions
-# defined below.
+# Each provider is a self-contained .zsh file that declares configuration
+# variables and implements the functions defined below.
 #
 # Provider files are named: providers/<provider_name>.zsh
 # Example: providers/openai.zsh, providers/anthropic.zsh, providers/ollama.zsh
@@ -12,35 +12,62 @@
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# REQUIRED VARIABLES
+# ------------------------------------------------------------------------------
+# Each provider MUST declare the following variables at load time:
+#
+# 1. PROVIDER_NAME
+#    Description: Unique identifier for this provider (lowercase, no spaces)
+#    Example:
+#        typeset -g PROVIDER_NAME="openai"
+#
+# 2. PROVIDER_DISPLAY_NAME
+#    Description: Human-readable name for display purposes
+#    Example:
+#        typeset -g PROVIDER_DISPLAY_NAME="OpenAI"
+#
+# 3. PROVIDER_API_BASE
+#    Description: Base URL for the provider's API
+#    Example:
+#        typeset -g PROVIDER_API_BASE="https://api.openai.com/v1"
+#
+# 4. PROVIDER_MODELS
+#    Description: Array of supported model identifiers
+#    Example:
+#        typeset -ga PROVIDER_MODELS=("gpt-4o" "gpt-4o-mini" "gpt-4-turbo")
+#
+# 5. PROVIDER_DEFAULT_MODEL
+#    Description: Default model to use if none specified
+#    Example:
+#        typeset -g PROVIDER_DEFAULT_MODEL="gpt-4o-mini"
+#
+# 6. PROVIDER_REQUIRES_API_KEY
+#    Description: Whether this provider requires an API key (true/false)
+#    Example:
+#        typeset -g PROVIDER_REQUIRES_API_KEY=true
+#
+# 7. PROVIDER_KEY_ENV_VAR
+#    Description: Environment variable name for the API key
+#    Example:
+#        typeset -g PROVIDER_KEY_ENV_VAR="ZSH_AI_COMMANDS_OPENAI_API_KEY"
+#
+# 8. PROVIDER_KEY_FILE
+#    Description: Filename for storing the API key (relative to config dir)
+#    Example:
+#        typeset -g PROVIDER_KEY_FILE="openai_key"
+
+# ------------------------------------------------------------------------------
 # REQUIRED FUNCTIONS
 # ------------------------------------------------------------------------------
 # Each provider MUST implement the following functions:
 #
-# 1. _zsh_ai_provider_name
-#    Description: Returns the unique identifier/name for this provider
-#    Returns: Provider name string via REPLY variable
-#    Example:
-#        _zsh_ai_provider_name() {
-#            REPLY="openai"
-#            return 0
-#        }
-#
-# 2. _zsh_ai_provider_models
-#    Description: Returns an array of supported model names for this provider
-#    Returns: Model names via REPLY (newline-separated or array)
-#    Example:
-#        _zsh_ai_provider_models() {
-#            REPLY=("gpt-4o" "gpt-4o-mini" "gpt-4-turbo")
-#            return 0
-#        }
-#
-# 3. _zsh_ai_provider_get_api_key
+# 1. _zsh_ai_provider_get_api_key
 #    Description: Retrieves the API key for this provider
 #    Returns: API key string via REPLY variable
 #    Returns: 0 on success, 1 if no key is available
 #    Example:
 #        _zsh_ai_provider_get_api_key() {
-#            local key_file="$ZSH_AI_COMMANDS_CONFIG_DIR/openai_api_key"
+#            local key_file="$ZSH_AI_COMMANDS_CONFIG_DIR/$PROVIDER_KEY_FILE"
 #            if [[ -f "$key_file" ]]; then
 #                REPLY=$(head -n1 "$key_file" | tr -d '\n\r')
 #                return 0
@@ -48,47 +75,22 @@
 #            return 1
 #        }
 #
-# 4. _zsh_ai_provider_setup_curl_config
-#    Arguments: $1 = API key
-#    Description: Sets up curl configuration for this provider's API
-#    Returns: 0 on success, 1 on failure
-#    Notes: Should create a curl config file and set ZSH_AI_COMMANDS_CURL_CONFIG_FILE
-#    Example:
-#        _zsh_ai_provider_setup_curl_config() {
-#            local api_key="$1"
-#            cat > "$ZSH_AI_COMMANDS_CURL_CONFIG_FILE" << EOF
-#        header = "Content-Type: application/json"
-#        header = "Authorization: Bearer ${api_key}"
-#        silent
-#        EOF
-#            return 0
-#        }
-#
-# 5. _zsh_ai_provider_build_request
+# 2. _zsh_ai_provider_make_request
 #    Arguments: $1 = user prompt, $2 = model name, $3 = n_generations, $4 = explainer (true/false)
-#    Description: Builds the JSON request body for the API call
-#    Returns: JSON string via REPLY variable
+#    Description: Makes the API request to the provider
+#    Returns: Raw response body via REPLY variable
+#    Returns: 0 on success, 1 on failure
 #    Example:
-#        _zsh_ai_provider_build_request() {
+#        _zsh_ai_provider_make_request() {
 #            local prompt="$1" model="$2" n="$3" explainer="$4"
-#            # Build and return JSON in REPLY
-#            REPLY='{"model": "'$model'", "messages": [...]}'
+#            # Build request, make API call, return response in REPLY
 #            return 0
 #        }
 #
-# 6. _zsh_ai_provider_get_api_url
-#    Description: Returns the API endpoint URL for this provider
-#    Returns: URL string via REPLY variable
-#    Example:
-#        _zsh_ai_provider_get_api_url() {
-#            REPLY="https://api.openai.com/v1/chat/completions"
-#            return 0
-#        }
-#
-# 7. _zsh_ai_provider_parse_response
+# 3. _zsh_ai_provider_parse_response
 #    Arguments: $1 = raw API response body
 #    Description: Parses the provider-specific response format
-#    Returns: Extracted content via REPLY variable (newline-separated for multiple choices)
+#    Returns: Extracted commands via REPLY variable (newline-separated for multiple choices)
 #    Returns: 0 on success, 1 on failure
 #    Example:
 #        _zsh_ai_provider_parse_response() {
@@ -96,62 +98,22 @@
 #            REPLY=$(echo "$response" | jq -r '.choices[].message.content')
 #            return 0
 #        }
-#
-# 8. _zsh_ai_provider_validate_response
-#    Arguments: $1 = raw API response body, $2 = HTTP status code
-#    Description: Validates the response and handles provider-specific errors
-#    Returns: 0 if response is valid, 1 if there's an error
-#    Notes: Should output error messages to stdout on failure
-#    Example:
-#        _zsh_ai_provider_validate_response() {
-#            local response="$1" http_code="$2"
-#            if [[ "$http_code" != "200" ]]; then
-#                echo "API error: HTTP $http_code"
-#                return 1
-#            fi
-#            return 0
-#        }
-#
-# 9. _zsh_ai_provider_cleanup
-#    Description: Cleans up any resources created by this provider
-#    Returns: Always returns 0
-#    Example:
-#        _zsh_ai_provider_cleanup() {
-#            [[ -f "$ZSH_AI_COMMANDS_CURL_CONFIG_FILE" ]] && rm -f "$ZSH_AI_COMMANDS_CURL_CONFIG_FILE"
-#            return 0
-#        }
-#
-# 10. _zsh_ai_provider_init
-#     Description: Initializes the provider (validates API key, sets defaults)
-#     Returns: 0 on success, 1 on failure
-#     Example:
-#         _zsh_ai_provider_init() {
-#             _zsh_ai_provider_get_api_key || return 1
-#             _zsh_ai_provider_setup_curl_config "$REPLY" || return 1
-#             return 0
-#         }
 
 # ------------------------------------------------------------------------------
 # OPTIONAL FUNCTIONS
 # ------------------------------------------------------------------------------
 # Providers MAY implement these functions for additional functionality:
 #
-# 1. _zsh_ai_provider_get_default_model
-#    Description: Returns the default model to use for this provider
-#    Returns: Model name via REPLY variable
-#    Default: First model from _zsh_ai_provider_models if not implemented
+# 1. _zsh_ai_provider_get_models
+#    Description: Returns available models (overrides PROVIDER_MODELS for dynamic discovery)
+#    Returns: Model names via REPLY (newline-separated or array)
+#    Default: Uses PROVIDER_MODELS variable if not implemented
 #
-# 2. _zsh_ai_provider_get_system_prompt
-#    Arguments: $1 = explainer mode (true/false)
-#    Description: Returns the system prompt to use for this provider
-#    Returns: System prompt string via REPLY variable
-#    Default: Generic shell command prompt if not implemented
-#
-# 3. _zsh_ai_provider_format_error
-#    Arguments: $1 = HTTP code, $2 = response body
-#    Description: Formats provider-specific error messages
-#    Returns: Formatted error string via REPLY variable
-#    Default: Generic error format if not implemented
+# 2. _zsh_ai_provider_validate_model
+#    Arguments: $1 = model name
+#    Description: Validates that a model is supported by this provider
+#    Returns: 0 if valid, 1 if invalid
+#    Default: Checks against PROVIDER_MODELS array if not implemented
 
 # ------------------------------------------------------------------------------
 # GLOBAL VARIABLES AVAILABLE TO PROVIDERS
@@ -159,7 +121,6 @@
 # Providers can rely on these global variables being set:
 #
 # - ZSH_AI_COMMANDS_CONFIG_DIR     : Path to config directory (~/.config/zsh-ai-commands)
-# - ZSH_AI_COMMANDS_CURL_CONFIG_FILE : Path to curl config file (provider should set this)
 # - ZSH_AI_COMMANDS_DEBUG          : If "true", debug logging is enabled
 # - ZSH_AI_COMMANDS_LLM_NAME       : Currently selected model name
 # - ZSH_AI_COMMANDS_N_GENERATIONS  : Number of completions to request
@@ -184,7 +145,7 @@
 # 5. Use _zsh_ai_commands_log for debug logging
 # 6. Handle API rate limits and retries appropriately
 # 7. Ensure sensitive data (API keys) are handled securely (file permissions: 600)
-# 8. Clean up temporary files in the cleanup function
+# 8. Clean up any temporary files created during requests
 
 # ------------------------------------------------------------------------------
 # EXAMPLE: Minimal Provider Implementation
@@ -196,44 +157,35 @@
 #   #!/bin/zsh
 #   # Provider: my-provider
 #
-#   _zsh_ai_provider_name() {
-#       REPLY="my-provider"
-#       return 0
-#   }
+#   # Required Variables
+#   typeset -g PROVIDER_NAME="my-provider"
+#   typeset -g PROVIDER_DISPLAY_NAME="My Provider"
+#   typeset -g PROVIDER_API_BASE="https://api.myprovider.com/v1"
+#   typeset -ga PROVIDER_MODELS=("model-1" "model-2")
+#   typeset -g PROVIDER_DEFAULT_MODEL="model-1"
+#   typeset -g PROVIDER_REQUIRES_API_KEY=true
+#   typeset -g PROVIDER_KEY_ENV_VAR="ZSH_AI_COMMANDS_MY_PROVIDER_API_KEY"
+#   typeset -g PROVIDER_KEY_FILE="my_provider_key"
 #
-#   _zsh_ai_provider_models() {
-#       REPLY=("model-1" "model-2")
-#       return 0
-#   }
-#
+#   # Required Functions
 #   _zsh_ai_provider_get_api_key() {
-#       # Implementation
+#       local key_file="$ZSH_AI_COMMANDS_CONFIG_DIR/$PROVIDER_KEY_FILE"
+#       if [[ -f "$key_file" ]]; then
+#           REPLY=$(head -n1 "$key_file" | tr -d '\n\r')
+#           return 0
+#       fi
+#       return 1
 #   }
 #
-#   _zsh_ai_provider_setup_curl_config() {
-#       # Implementation
-#   }
-#
-#   _zsh_ai_provider_build_request() {
-#       # Implementation
-#   }
-#
-#   _zsh_ai_provider_get_api_url() {
-#       # Implementation
+#   _zsh_ai_provider_make_request() {
+#       local prompt="$1" model="$2" n="$3" explainer="$4"
+#       # Build request body, make API call
+#       # Store raw response in REPLY
+#       return 0
 #   }
 #
 #   _zsh_ai_provider_parse_response() {
-#       # Implementation
-#   }
-#
-#   _zsh_ai_provider_validate_response() {
-#       # Implementation
-#   }
-#
-#   _zsh_ai_provider_cleanup() {
-#       # Implementation
-#   }
-#
-#   _zsh_ai_provider_init() {
-#       # Implementation
+#       local response="$1"
+#       REPLY=$(echo "$response" | jq -r '.choices[].message.content')
+#       return 0
 #   }
