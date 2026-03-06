@@ -1,5 +1,6 @@
 #!/bin/zsh
 
+typeset -g _ZSH_AI_COMMANDS_DIR="${${(%):-%x}:A:h}"
 typeset -g ZSH_AI_COMMANDS_CONFIG_DIR="${HOME}/.config/zsh-ai-commands"
 typeset -g ZSH_AI_COMMANDS_API_KEY_DIR="${ZSH_AI_COMMANDS_CONFIG_DIR}/keys"
 typeset -g ZSH_AI_COMMANDS_CONFIG_FILE="${ZSH_AI_COMMANDS_CONFIG_DIR}/config"
@@ -142,9 +143,11 @@ _zsh_ai_commands_init() {
     _zsh_ai_commands_check_dependencies || return 1
     _zsh_ai_commands_ensure_config_dir || return 1
 
+    # Set providers directory before sourcing registry (so %x fallback is not needed)
+    typeset -g _zsh_ai_registry_dir="${_ZSH_AI_COMMANDS_DIR}/providers"
+
     # Source provider registry
-    local script_dir="${0:A:h}"
-    source "${script_dir}/providers/registry.zsh" || {
+    source "${_ZSH_AI_COMMANDS_DIR}/providers/registry.zsh" || {
         echo "zsh-ai-commands::Error::Could not load provider registry"
         return 1
     }

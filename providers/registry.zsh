@@ -11,42 +11,12 @@
 # REGISTRY VARIABLES
 # ------------------------------------------------------------------------------
 
-# Associative array mapping provider names to their file paths
-typeset -gA _zsh_ai_registry_providers=()
-
 # Name of the currently loaded provider
 typeset -g _zsh_ai_registry_current_provider=""
 
-# ------------------------------------------------------------------------------
-# REGISTRY INITIALIZATION
-# ------------------------------------------------------------------------------
-
-# Discover and register all available providers
-# This function scans the providers directory for .zsh files
-# Returns: 0 on success
-_zsh_ai_registry_discover_providers() {
-    local providers_dir="${0:A:h}"
-    local provider_file=""
-
-    _zsh_ai_registry_providers=()
-
-    # Scan for provider files (excluding _provider_interface.zsh and registry.zsh)
-    for provider_file in "$providers_dir"/*.zsh(N); do
-        local basename="${provider_file:t}"
-
-        # Skip interface documentation and registry itself
-        [[ "$basename" == "_provider_interface.zsh" ]] && continue
-        [[ "$basename" == "registry.zsh" ]] && continue
-
-        # Extract provider name from filename (without .zsh extension)
-        local provider_name="${basename%.zsh}"
-
-        # Register the provider
-        _zsh_ai_registry_providers["$provider_name"]="$provider_file"
-    done
-
-    return 0
-}
+# _zsh_ai_registry_dir must be set by the caller before sourcing this file.
+# Fallback for direct sourcing (not recommended):
+(( ! ${+_zsh_ai_registry_dir} )) && typeset -g _zsh_ai_registry_dir="${${(%):-%x}:A:h}"
 
 # ------------------------------------------------------------------------------
 # PROVIDER MANAGEMENT FUNCTIONS
@@ -58,56 +28,42 @@ _zsh_ai_registry_discover_providers() {
 _zsh_ai_registry_load_provider() {
     local provider_name="$1"
 
-    # Validate provider name
     if [[ -z "$provider_name" ]]; then
         echo "zsh-ai-commands::Error::No provider name specified"
         return 1
     fi
 
-    # Discover providers if not already done
-    if (( ${#_zsh_ai_registry_providers} == 0 )); then
-        _zsh_ai_registry_discover_providers
-    fi
+    # Construct file path directly — avoids associative array scoping issues
+    local provider_file="${_zsh_ai_registry_dir}/${provider_name}.zsh"
 
-    # Check if provider exists
-    if [[ -z "${_zsh_ai_registry_providers[$provider_name]}" ]]; then
-        echo "zsh-ai-commands::Error::Unknown provider: $provider_name"
-        echo "Available providers: ${(@k)_zsh_ai_registry_providers}"
-        return 1
-    fi
-
-    local provider_file="${_zsh_ai_registry_providers[$provider_name]}"
-
-    # Check if file exists
     if [[ ! -f "$provider_file" ]]; then
-        echo "zsh-ai-commands::Error::Provider file not found: $provider_file"
+        echo "zsh-ai-commands::Error::Unknown provider: $provider_name"
+        _zsh_ai_registry_list_providers
+        echo "Available providers: $REPLY"
         return 1
     fi
 
-    # Source the provider file
     source "$provider_file"
 
-    # Verify required variables are set
     if [[ -z "$PROVIDER_NAME" ]]; then
         echo "zsh-ai-commands::Error::Provider $provider_name did not set PROVIDER_NAME"
         return 1
     fi
 
-    # Set as current provider
     _zsh_ai_registry_current_provider="$provider_name"
-
     return 0
 }
 
 # List all available provider names
 # Returns: Provider names via REPLY variable (space-separated)
 _zsh_ai_registry_list_providers() {
-    # Discover providers if not already done
-    if (( ${#_zsh_ai_registry_providers} == 0 )); then
-        _zsh_ai_registry_discover_providers
-    fi
-
-    REPLY="${(@k)_zsh_ai_registry_providers}"
+    local f name names=()
+    for f in "${_zsh_ai_registry_dir}"/*.zsh(N); do
+        name="${f:t:r}"
+        [[ "$name" == "_provider_interface" || "$name" == "registry" ]] && continue
+        names+=("$name")
+    done
+    REPLY="${names[*]}"
     return 0
 }
 
@@ -281,4 +237,3 @@ _zsh_ai_registry_configure_from_openai_format() {
 # ------------------------------------------------------------------------------
 
 # Auto-discover providers when registry is loaded
-_zsh_ai_registry_discover_providers
