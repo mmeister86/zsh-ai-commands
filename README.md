@@ -15,7 +15,7 @@ zsh-ai-commands supports multiple LLM providers:
 |----------|------|---------------|------------------|
 | OpenAI | Cloud | gpt-5-nano | Yes |
 | Anthropic | Cloud | claude-sonnet-4-6-20250219 | Yes |
-| Google Gemini | Cloud | gemini-3-flash | Yes |
+| Google Gemini | Cloud | gemini-flash-latest | Yes |
 | Groq | Cloud | llama-3.3-70b-versatile | Yes |
 | DeepSeek | Cloud | deepseek-chat | Yes |
 | Ollama | Local | (auto-detected) | No |
@@ -121,11 +121,12 @@ For local providers (Ollama, OpenAI-Compatible), no API key is needed.
 - `claude-haiku-4-5-20251015`
 
 #### Google Gemini
-- `gemini-3-pro`
-- `gemini-3-flash` (default)
-- `gemini-3-flash-thinking`
-- `gemini-2.5-pro`
 - `gemini-2.5-flash`
+- `gemini-2.5-pro`
+- `gemini-3.0-flash` (maps to `gemini-3-flash-preview`)
+- `gemini-3.0-pro` (maps to `gemini-3-pro-preview`)
+- `gemini-flash-latest` (default)
+- `gemini-pro-latest`
 
 #### Groq
 - `llama-3.3-70b-versatile` (default)

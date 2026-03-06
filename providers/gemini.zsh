@@ -3,7 +3,7 @@
 # Provider: Google Gemini
 # ==============================================================================
 # Implements the Google Gemini API provider for zsh-ai-commands.
-# Supports Gemini 3 and 2.5 model families.
+# Supports Gemini 2.5 stable models and Gemini 3 preview aliases.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -13,8 +13,8 @@
 typeset -g PROVIDER_NAME="gemini"
 typeset -g PROVIDER_DISPLAY_NAME="Google Gemini"
 typeset -g PROVIDER_API_BASE="https://generativelanguage.googleapis.com/v1beta"
-typeset -ga PROVIDER_MODELS=("gemini-3-pro" "gemini-3-flash" "gemini-3-flash-thinking" "gemini-2.5-pro" "gemini-2.5-flash")
-typeset -g PROVIDER_DEFAULT_MODEL="gemini-3-flash"
+typeset -ga PROVIDER_MODELS=("gemini-2.5-flash" "gemini-2.5-pro" "gemini-3.0-flash" "gemini-3.0-pro" "gemini-flash-latest" "gemini-pro-latest")
+typeset -g PROVIDER_DEFAULT_MODEL="gemini-flash-latest"
 typeset -g PROVIDER_REQUIRES_API_KEY=true
 typeset -g PROVIDER_KEY_ENV_VAR="ZSH_AI_COMMANDS_GEMINI_API_KEY"
 typeset -g PROVIDER_KEY_FILE="gemini_key"
@@ -49,6 +49,27 @@ _zsh_ai_provider_get_api_key() {
     return 0
 }
 
+# Resolve user-facing model aliases to Gemini API model IDs.
+# Arguments: $1 = user-facing model name
+# Returns: API model name via REPLY variable
+_zsh_ai_provider_resolve_model() {
+    local model="$1"
+
+    case "$model" in
+        gemini-3.0-flash)
+            REPLY="gemini-3-flash-preview"
+            ;;
+        gemini-3.0-pro)
+            REPLY="gemini-3-pro-preview"
+            ;;
+        *)
+            REPLY="$model"
+            ;;
+    esac
+
+    return 0
+}
+
 # Make API request to Gemini generateContent endpoint
 # Arguments: $1 = request body (JSON string from core)
 # Returns: Raw response via REPLY variable
@@ -72,6 +93,9 @@ _zsh_ai_provider_make_request() {
         return 1
     }
     local api_key="$REPLY"
+
+    _zsh_ai_provider_resolve_model "$model"
+    local api_model="$REPLY"
 
     # Transform OpenAI-style request body to Gemini format
     # Extract the user message from the OpenAI-style messages array
@@ -105,7 +129,7 @@ _zsh_ai_provider_make_request() {
             -H "Content-Type: application/json" \
             -d "$gemini_request" \
             -w "\n%{http_code}" \
-            "${PROVIDER_API_BASE}/models/${model}:generateContent?key=${api_key}" 2>&1)
+            "${PROVIDER_API_BASE}/models/${api_model}:generateContent?key=${api_key}" 2>&1)
         local curl_exit=$?
 
         _zsh_ai_provider_split_http_response "$response"
