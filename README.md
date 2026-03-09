@@ -2,7 +2,7 @@
 
 <img src="./zsh-ai-commands-demo.gif" width="100%" alt="zsh-ai-commands-demo">
 
-This plugin works by asking an LLM for terminal commands that achieve the described target action.
+This plugin works by asking an LLM for terminal commands that achieve the described target action. It's forked from [zsh-ai-commands](https://github.com/pmuller/zsh-ai-commands) and adds support for more providers and models.
 
 To use it just type what you want to do (e.g. `list all files in this directory`) and hit the configured hotkey (default: `Ctrl+o`).
 When the LLM responds with its suggestions just select the one from the list you want to use.
@@ -11,14 +11,14 @@ When the LLM responds with its suggestions just select the one from the list you
 
 zsh-ai-commands supports multiple LLM providers:
 
-| Provider | Type | Default Model | API Key Required |
-|----------|------|---------------|------------------|
-| OpenAI | Cloud | gpt-5-nano | Yes |
-| Anthropic | Cloud | claude-sonnet-4-6-20250219 | Yes |
-| Google Gemini | Cloud | gemini-flash-latest | Yes |
-| OpenRouter | Cloud | google/gemini-2.5-flash | Yes |
-| DeepSeek | Cloud | deepseek-chat | Yes |
-| Ollama | Local | (auto-detected) | No |
+| Provider      | Type  | Default Model              | API Key Required |
+| ------------- | ----- | -------------------------- | ---------------- |
+| OpenAI        | Cloud | gpt-5-nano                 | Yes              |
+| Anthropic     | Cloud | claude-sonnet-4-6-20250219 | Yes              |
+| Google Gemini | Cloud | gemini-flash-latest        | Yes              |
+| OpenRouter    | Cloud | google/gemini-2.5-flash    | Yes              |
+| DeepSeek      | Cloud | deepseek-chat              | Yes              |
+| Ollama        | Local | (auto-detected)            | No               |
 
 ## Requirements
 
@@ -108,18 +108,21 @@ For local providers (Ollama), no API key is needed.
 ### Available Models by Provider
 
 #### OpenAI
+
 - `gpt-5-mini`
 - `gpt-5-nano` (default)
 - `o4-mini`
 - `gpt-5.1-codex-mini`
 
 #### Anthropic Claude
+
 - `claude-opus-4-6-20250219`
 - `claude-sonnet-4-6-20250219` (default)
 - `claude-sonnet-4-5-20250929`
 - `claude-haiku-4-5-20251015`
 
 #### Google Gemini
+
 - `gemini-2.5-flash`
 - `gemini-2.5-pro`
 - `gemini-3.0-flash` (maps to `gemini-3-flash-preview`)
@@ -128,14 +131,17 @@ For local providers (Ollama), no API key is needed.
 - `gemini-pro-latest`
 
 #### DeepSeek
+
 - `deepseek-chat` (default)
 - `deepseek-coder`
 - `deepseek-reasoner`
 
 #### Ollama (Local)
+
 Models are automatically discovered from your Ollama installation. Make sure Ollama is running before selecting models.
 
 Common models include:
+
 - `llama3`
 - `llama3:8b`
 - `mistral`
@@ -143,7 +149,9 @@ Common models include:
 - `deepseek-coder`
 
 #### OpenRouter
+
 OpenRouter provides unified access to multiple LLM providers. Popular models include:
+
 - `google/gemini-2.5-flash` (default)
 - `anthropic/claude-4.6-sonnet-20260217`
 - `deepseek/deepseek-v3.2-20251201`
@@ -199,22 +207,22 @@ ollama serve
 
 ## Configuration Variables
 
-| Variable                              | Default              | Description                                                                             |
-| ------------------------------------- | -------------------- | --------------------------------------------------------------------------------------- |
-| `ZSH_AI_COMMANDS_OPENAI_API_KEY`      | (not set)            | OpenAI API key (optional if key file exists)                                            |
-| `ZSH_AI_COMMANDS_ANTHROPIC_API_KEY`   | (not set)            | Anthropic API key (optional if key file exists)                                         |
-| `ZSH_AI_COMMANDS_GEMINI_API_KEY`      | (not set)            | Google Gemini API key (optional if key file exists)                                     |
-| `ZSH_AI_COMMANDS_OPENROUTER_API_KEY`  | (not set)            | OpenRouter API key (optional if key file exists)                                        |
-| `ZSH_AI_COMMANDS_DEEPSEEK_API_KEY`    | (not set)            | DeepSeek API key (optional if key file exists)                                          |
-| `ZSH_AI_COMMANDS_OLLAMA_HOST`         | `http://localhost:11434` | Ollama server host URL                                                                  |
-| `ZSH_AI_COMMANDS_HOTKEY`              | `^o` (Ctrl+o)        | Hotkey to trigger the request                                                           |
-| `ZSH_AI_COMMANDS_LLM_HOTKEY`          | `^l` (Ctrl+l)        | Hotkey for interactive provider/model selection                                         |
-| `ZSH_AI_COMMANDS_LLM_NAME`            | (provider default)   | LLM model name                                                                          |
-| `ZSH_AI_COMMANDS_N_GENERATIONS`       | `5`                  | Number of completions to ask for                                                        |
-| `ZSH_AI_COMMANDS_EXPLAINER`           | `true`               | If true, the LLM will comment the command                                               |
-| `ZSH_AI_COMMANDS_HISTORY`             | `false`              | If true, save the natural language prompt to the shell history (and atuin if installed) |
-| `ZSH_AI_COMMANDS_DEBUG`               | (not set)            | If set to `true`, enables debug logging                                                 |
-| `ZSH_AI_COMMANDS_TIMEOUT`             | `30`                 | Request timeout in seconds (60 for local providers)                                     |
+| Variable                             | Default                  | Description                                                                             |
+| ------------------------------------ | ------------------------ | --------------------------------------------------------------------------------------- |
+| `ZSH_AI_COMMANDS_OPENAI_API_KEY`     | (not set)                | OpenAI API key (optional if key file exists)                                            |
+| `ZSH_AI_COMMANDS_ANTHROPIC_API_KEY`  | (not set)                | Anthropic API key (optional if key file exists)                                         |
+| `ZSH_AI_COMMANDS_GEMINI_API_KEY`     | (not set)                | Google Gemini API key (optional if key file exists)                                     |
+| `ZSH_AI_COMMANDS_OPENROUTER_API_KEY` | (not set)                | OpenRouter API key (optional if key file exists)                                        |
+| `ZSH_AI_COMMANDS_DEEPSEEK_API_KEY`   | (not set)                | DeepSeek API key (optional if key file exists)                                          |
+| `ZSH_AI_COMMANDS_OLLAMA_HOST`        | `http://localhost:11434` | Ollama server host URL                                                                  |
+| `ZSH_AI_COMMANDS_HOTKEY`             | `^o` (Ctrl+o)            | Hotkey to trigger the request                                                           |
+| `ZSH_AI_COMMANDS_LLM_HOTKEY`         | `^l` (Ctrl+l)            | Hotkey for interactive provider/model selection                                         |
+| `ZSH_AI_COMMANDS_LLM_NAME`           | (provider default)       | LLM model name                                                                          |
+| `ZSH_AI_COMMANDS_N_GENERATIONS`      | `5`                      | Number of completions to ask for                                                        |
+| `ZSH_AI_COMMANDS_EXPLAINER`          | `true`                   | If true, the LLM will comment the command                                               |
+| `ZSH_AI_COMMANDS_HISTORY`            | `false`                  | If true, save the natural language prompt to the shell history (and atuin if installed) |
+| `ZSH_AI_COMMANDS_DEBUG`              | (not set)                | If set to `true`, enables debug logging                                                 |
+| `ZSH_AI_COMMANDS_TIMEOUT`            | `30`                     | Request timeout in seconds (60 for local providers)                                     |
 
 ## Error Handling
 
