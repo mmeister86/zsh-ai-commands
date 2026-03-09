@@ -1,6 +1,6 @@
 # ZSH AI Commands
 
-![zsh-ai-commands-demo](./zsh-ai-commands-demo.gif)
+<img src="./zsh-ai-commands-demo.gif" width="100%" alt="zsh-ai-commands-demo">
 
 This plugin works by asking an LLM for terminal commands that achieve the described target action.
 
