@@ -16,10 +16,9 @@ zsh-ai-commands supports multiple LLM providers:
 | OpenAI | Cloud | gpt-5-nano | Yes |
 | Anthropic | Cloud | claude-sonnet-4-6-20250219 | Yes |
 | Google Gemini | Cloud | gemini-flash-latest | Yes |
-| Groq | Cloud | llama-3.3-70b-versatile | Yes |
+| OpenRouter | Cloud | google/gemini-2.5-flash | Yes |
 | DeepSeek | Cloud | deepseek-chat | Yes |
 | Ollama | Local | (auto-detected) | No |
-| OpenAI-Compatible | Local | local-model | No |
 
 ## Requirements
 
@@ -66,8 +65,8 @@ echo "sk-ant-xxxxxxxxxxxxxxxxxxxxx" > ~/.config/zsh-ai-commands/keys/anthropic_k
 # Google Gemini
 echo "AIzaxxxxxxxxxxxxxxxxxxxxxxxx" > ~/.config/zsh-ai-commands/keys/gemini_key
 
-# Groq
-echo "gsk_xxxxxxxxxxxxxxxxxxxxxxxx" > ~/.config/zsh-ai-commands/keys/groq_key
+# OpenRouter
+echo "sk-or-xxxxxxxxxxxxxxxxxxxxxxx" > ~/.config/zsh-ai-commands/keys/openrouter_key
 
 # DeepSeek
 echo "sk-xxxxxxxxxxxxxxxxxxxxxxxx" > ~/.config/zsh-ai-commands/keys/deepseek_key
@@ -91,8 +90,8 @@ export ZSH_AI_COMMANDS_ANTHROPIC_API_KEY="sk-ant-xxxxxxxxxxxxxxxxxxxxx"
 # Google Gemini
 export ZSH_AI_COMMANDS_GEMINI_API_KEY="AIzaxxxxxxxxxxxxxxxxxxxxxxxx"
 
-# Groq
-export ZSH_AI_COMMANDS_GROQ_API_KEY="gsk_xxxxxxxxxxxxxxxxxxxxxxxx"
+# OpenRouter
+export ZSH_AI_COMMANDS_OPENROUTER_API_KEY="sk-or-xxxxxxxxxxxxxxxxxxxxxxx"
 
 # DeepSeek
 export ZSH_AI_COMMANDS_DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
@@ -102,7 +101,7 @@ export ZSH_AI_COMMANDS_DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
 
 ### Local Providers (No API Key Required)
 
-For local providers (Ollama, OpenAI-Compatible), no API key is needed.
+For local providers (Ollama), no API key is needed.
 
 ## Model Selection
 
@@ -128,12 +127,6 @@ For local providers (Ollama, OpenAI-Compatible), no API key is needed.
 - `gemini-flash-latest` (default)
 - `gemini-pro-latest`
 
-#### Groq
-- `llama-3.3-70b-versatile` (default)
-- `llama-3.1-8b-instant`
-- `mixtral-8x7b-32768`
-- `gemma2-9b-it`
-
 #### DeepSeek
 - `deepseek-chat` (default)
 - `deepseek-coder`
@@ -149,8 +142,18 @@ Common models include:
 - `codellama`
 - `deepseek-coder`
 
-#### OpenAI-Compatible (Local)
-Models are dynamically discovered from the server. Works with LM Studio, vLLM, LocalAI, etc.
+#### OpenRouter
+OpenRouter provides unified access to multiple LLM providers. Popular models include:
+- `google/gemini-2.5-flash` (default)
+- `anthropic/claude-4.6-sonnet-20260217`
+- `deepseek/deepseek-v3.2-20251201`
+- `stepfun/step-3.5-flash:free` (free)
+- `arcee-ai/trinity-large-preview:free` (free)
+- `meta-llama/llama-3.3-70b-instruct`
+- `x-ai/grok-4.1-fast`
+- `minimax/minimax-m2.5-20260211`
+
+See https://openrouter.ai/models for the full list of available models.
 
 ### Default Provider and Model
 
@@ -194,21 +197,6 @@ Make sure Ollama is running before using this provider:
 ollama serve
 ```
 
-### OpenAI-Compatible (Local)
-
-Configure the base URL for your local LLM server:
-
-```sh
-export ZSH_AI_COMMANDS_COMPATIBLE_BASE="http://localhost:1234/v1"
-```
-
-This provider is compatible with:
-- [LM Studio](https://lmstudio.ai/)
-- [vLLM](https://github.com/vllm-project/vllm)
-- [LocalAI](https://localai.io/)
-- Ollama's OpenAI-compatible endpoint
-- Any server implementing the OpenAI chat completions API
-
 ## Configuration Variables
 
 | Variable                              | Default              | Description                                                                             |
@@ -216,10 +204,9 @@ This provider is compatible with:
 | `ZSH_AI_COMMANDS_OPENAI_API_KEY`      | (not set)            | OpenAI API key (optional if key file exists)                                            |
 | `ZSH_AI_COMMANDS_ANTHROPIC_API_KEY`   | (not set)            | Anthropic API key (optional if key file exists)                                         |
 | `ZSH_AI_COMMANDS_GEMINI_API_KEY`      | (not set)            | Google Gemini API key (optional if key file exists)                                     |
-| `ZSH_AI_COMMANDS_GROQ_API_KEY`        | (not set)            | Groq API key (optional if key file exists)                                              |
+| `ZSH_AI_COMMANDS_OPENROUTER_API_KEY`  | (not set)            | OpenRouter API key (optional if key file exists)                                        |
 | `ZSH_AI_COMMANDS_DEEPSEEK_API_KEY`    | (not set)            | DeepSeek API key (optional if key file exists)                                          |
 | `ZSH_AI_COMMANDS_OLLAMA_HOST`         | `http://localhost:11434` | Ollama server host URL                                                                  |
-| `ZSH_AI_COMMANDS_COMPATIBLE_BASE`     | `http://localhost:1234/v1` | Base URL for OpenAI-compatible local servers                                            |
 | `ZSH_AI_COMMANDS_HOTKEY`              | `^o` (Ctrl+o)        | Hotkey to trigger the request                                                           |
 | `ZSH_AI_COMMANDS_LLM_HOTKEY`          | `^l` (Ctrl+l)        | Hotkey for interactive provider/model selection                                         |
 | `ZSH_AI_COMMANDS_LLM_NAME`            | (provider default)   | LLM model name                                                                          |
