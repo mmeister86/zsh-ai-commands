@@ -38,7 +38,7 @@ _zsh_ai_provider_get_api_key() {
     # Fall back to environment variable
     if [[ -z "$api_key" ]]; then
         # Use dynamic variable lookup for the env var name
-        eval "api_key=\${$PROVIDER_KEY_ENV_VAR:-}"
+        api_key="${(P)PROVIDER_KEY_ENV_VAR:-}"
     fi
 
     if [[ -z "$api_key" ]]; then

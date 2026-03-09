@@ -200,6 +200,20 @@ _zsh_ai_commands_init() {
     return 0
 }
 
+_zsh_ai_commands_sanitize_command() {
+    local cmd="$1"
+    # Remove ANSI escape sequences
+    cmd=$(echo "$cmd" | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g')
+    # Remove control characters except newline and tab
+    cmd=$(echo "$cmd" | tr -d '\000-\010\013\014\016-\037\177')
+    # Trim whitespace
+    cmd=$(echo "$cmd" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    # Ensure single line (take first line if multiple)
+    cmd=$(echo "$cmd" | head -n1)
+    REPLY="$cmd"
+    return 0
+}
+
 fzf_ai_commands() {
     setopt extendedglob
     local ret=0
@@ -222,43 +236,53 @@ fzf_ai_commands() {
     local display_name="${REPLY:-LLM}"
 
     BUFFER="Asking ${display_name} (${ZSH_AI_COMMANDS_LLM_NAME}) for a command to do: $user_query. Please wait..."
-    local escaped_query=$(echo "$user_query" | sed 's/"/\\"/g')
     zle end-of-line
     zle reset-prompt
 
-    local system_prompt user_prompt request_body
+    local system_prompt user_prompt request_body shell_name
+    shell_name=$(basename "$SHELL")
 
     if [[ "$ZSH_AI_COMMANDS_EXPLAINER" == "true" ]]; then
-        system_prompt="You only answer 1 appropriate shell one liner that does what the user asks for. The command has to work with the $(basename $SHELL) terminal. Don't wrap your answer in code blocks or anything, dont acknowledge those rules, don't format your answer. Just reply the plaintext command. If your answer uses arguments or flags, you MUST end your shell command with a shell comment starting with ## with a ; separated list of concise explanations about each agument. Don't explain obvious placeholders like <ip> or <serverport> etc. Remember that your whole answer MUST remain a oneliner."
+        system_prompt="You only answer 1 appropriate shell one liner that does what the user asks for. The command has to work with the ${shell_name} terminal. Don't wrap your answer in code blocks or anything, dont acknowledge those rules, don't format your answer. Just reply the plaintext command. If your answer uses arguments or flags, you MUST end your shell command with a shell comment starting with ## with a ; separated list of concise explanations about each agument. Don't explain obvious placeholders like <ip> or <serverport> etc. Remember that your whole answer MUST remain a oneliner."
         local example_q="Description of what the command should do: 'list files, sort by descending size'. Give me the appropriate command."
         local example_a="ls -lSr ## -l long listing ; -S sort by file size ; -r reverse order"
-        user_prompt="Description of what the command should do: '$escaped_query'. Give me the appropriate command."
-        request_body='{
-            "model": "'$ZSH_AI_COMMANDS_LLM_NAME'",
-            "n": '$ZSH_AI_COMMANDS_N_GENERATIONS',
-            "temperature": 1,
-            "messages": [
-                {"role": "system", "content": "'$system_prompt'"},
-                {"role": "user", "content": "'$example_q'"},
-                {"role": "assistant", "content": "'$example_a'"},
-                {"role": "user", "content": "'$user_prompt'"}
-            ]
-        }'
+        user_prompt="Description of what the command should do: '${user_query}'. Give me the appropriate command."
+        request_body=$(jq -n \
+            --arg model "$ZSH_AI_COMMANDS_LLM_NAME" \
+            --argjson n "$ZSH_AI_COMMANDS_N_GENERATIONS" \
+            --arg system "$system_prompt" \
+            --arg example_q "$example_q" \
+            --arg example_a "$example_a" \
+            --arg user "$user_prompt" \
+            '{
+                model: $model,
+                n: $n,
+                temperature: 1,
+                messages: [
+                    {role: "system", content: $system},
+                    {role: "user", content: $example_q},
+                    {role: "assistant", content: $example_a},
+                    {role: "user", content: $user}
+                ]
+            }')
     else
-        system_prompt="You only answer 1 appropriate shell one liner that does what the user asks for. The command has to work with the $(basename $SHELL) terminal. Don't wrap your answer in anything, dont acknowledge those rules, don't format your answer. Just reply the plaintext command."
-        user_prompt="Description of what the command should do:\n'''\n$escaped_query\n'''\nGive me the appropriate command."
-        request_body='{
-            "model": "'$ZSH_AI_COMMANDS_LLM_NAME'",
-            "n": '$ZSH_AI_COMMANDS_N_GENERATIONS',
-            "temperature": 1,
-            "messages": [
-                {"role": "system", "content": "'$system_prompt'"},
-                {"role": "user", "content": "'$user_prompt'"}
-            ]
-        }'
+        system_prompt="You only answer 1 appropriate shell one liner that does what the user asks for. The command has to work with the ${shell_name} terminal. Don't wrap your answer in anything, dont acknowledge those rules, don't format your answer. Just reply the plaintext command."
+        user_prompt="Description of what the command should do:\n'''\n${user_query}\n'''\nGive me the appropriate command."
+        request_body=$(jq -n \
+            --arg model "$ZSH_AI_COMMANDS_LLM_NAME" \
+            --argjson n "$ZSH_AI_COMMANDS_N_GENERATIONS" \
+            --arg system "$system_prompt" \
+            --arg user "$user_prompt" \
+            '{
+                model: $model,
+                n: $n,
+                temperature: 1,
+                messages: [
+                    {role: "system", content: $system},
+                    {role: "user", content: $user}
+                ]
+            }')
     fi
-
-    echo "$request_body" | jq > /dev/null 2>&1 || { echo "zsh-ai-commands::Error::Invalid JSON in request body"; return 1 }
 
     # Use provider make_request function
     _zsh_ai_provider_make_request "$request_body" || { ret=$?; return $ret }
@@ -282,7 +306,8 @@ fzf_ai_commands() {
         selected_command=$(echo "$parsed_response" | fzf --reverse --height=~100% --preview-window down:wrap --preview 'echo {}')
     fi
 
-    BUFFER="$selected_command"
+    _zsh_ai_commands_sanitize_command "$selected_command"
+    BUFFER="$REPLY"
     zle end-of-line
     zle reset-prompt
 

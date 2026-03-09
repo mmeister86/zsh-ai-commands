@@ -22,6 +22,24 @@ typeset -g _zsh_ai_registry_current_provider=""
 # PROVIDER MANAGEMENT FUNCTIONS
 # ------------------------------------------------------------------------------
 
+_zsh_ai_registry_validate_provider_name() {
+    local provider_name="$1"
+
+    if [[ -z "$provider_name" ]]; then
+        return 1
+    fi
+
+    if [[ ! "$provider_name" =~ ^[a-z0-9_-]+$ ]]; then
+        return 1
+    fi
+
+    if [[ "$provider_name" == _* ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
 # Load a provider module and set it as current
 # Arguments: $1 = provider name
 # Returns: 0 on success, 1 on failure
@@ -33,8 +51,19 @@ _zsh_ai_registry_load_provider() {
         return 1
     fi
 
-    # Construct file path directly — avoids associative array scoping issues
+    if ! _zsh_ai_registry_validate_provider_name "$provider_name"; then
+        echo "zsh-ai-commands::Error::Invalid provider name: $provider_name"
+        return 1
+    fi
+
     local provider_file="${_zsh_ai_registry_dir}/${provider_name}.zsh"
+
+    local canonical_file="${provider_file:A}"
+    local canonical_dir="${_zsh_ai_registry_dir:A}"
+    if [[ "$canonical_file" != "${canonical_dir}"* ]]; then
+        echo "zsh-ai-commands::Error::Provider path escapes registry directory"
+        return 1
+    fi
 
     if [[ ! -f "$provider_file" ]]; then
         echo "zsh-ai-commands::Error::Unknown provider: $provider_name"
