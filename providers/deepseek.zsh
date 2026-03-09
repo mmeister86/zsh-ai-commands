@@ -71,6 +71,19 @@ _zsh_ai_provider_make_request() {
     }
     local api_key="$REPLY"
 
+    # DeepSeek currently supports only n=1 for chat/completions.
+    # Normalize request payload to avoid HTTP 400 invalid_request_error.
+    local requested_n=""
+    requested_n=$(echo "$request_body" | jq -r '.n // empty' 2>/dev/null)
+    if [[ -n "$requested_n" && "$requested_n" != "1" ]]; then
+        local normalized_request_body=""
+        normalized_request_body=$(echo "$request_body" | jq '.n = 1' 2>/dev/null)
+        if [[ -n "$normalized_request_body" ]]; then
+            request_body="$normalized_request_body"
+            _zsh_ai_commands_log "DeepSeek request normalized: n=${requested_n} -> n=1"
+        fi
+    fi
+
     while (( attempt <= max_retries )); do
         response=$(curl -s -S \
             --max-time "$timeout" \
